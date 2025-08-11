@@ -1,0 +1,7 @@
+polygon-api-client>=1.13
+pandas>=2.2
+pyarrow>=16
+python-dotenv>=1.0
+tqdm>=4.66
+tenacity>=8.2   # retry/backoff
+pytz
