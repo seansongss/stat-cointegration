@@ -3,21 +3,18 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-POLYGON_API_KEY = os.getenv("POLYGON_API_KEY")
-
-if not POLYGON_API_KEY:
-    raise RuntimeError(
-        "POLYGON_API_KEY not set. Copy .env.example to .env and paste your key."
-    )
-
-MARKET_TZ = "America/New_York"
-
-REGULAR_OPEN = "09:30"
-REGULAR_CLOSE = "16:00"
-
-DATA_DIR = os.path.join("data")
-RAW_DIR = os.path.join(DATA_DIR, "raw")
+DATA_DIR = "data"
 META_DIR = os.path.join(DATA_DIR, "meta")
-
-os.makedirs(RAW_DIR, exist_ok=True)
+RAW_DIR  = os.path.join(DATA_DIR, "raw")
 os.makedirs(META_DIR, exist_ok=True)
+os.makedirs(RAW_DIR,  exist_ok=True)
+
+WRDS_USERNAME = os.getenv("WRDS_USERNAME")
+WRDS_POSTGRES_HOST = os.getenv("WRDS_POSTGRES_HOST", "wrds-pgdata.wharton.upenn.edu")
+WRDS_POSTGRES_PORT = int(os.getenv("WRDS_POSTGRES_PORT", "9737"))
+
+# Exchanges: NYSE(1), AMEX(2), NASDAQ(3)
+VALID_EXCHCD = (1, 2, 3)
+
+# Share codes: 10, 11 = common stocks
+VALID_SHRCD = (10, 11)
