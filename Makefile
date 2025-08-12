@@ -6,17 +6,12 @@ install:
 env:
 	cp -n .env.example .env || true
 
-snapshot:
-	$(PY) -m src.universe snapshot
-
-addv:
-	$(PY) -m src.universe addv --days 60
-
 universe:
-	$(PY) -m src.universe finalize --top 300
+	$(PY) -m src.universe_crsp build --end 2024-12-31 --days 60 --top 300
 
 smoke:
-	$(PY) -m src.download_minutes --tickers KO,PEP --days 7
+	$(PY) -m src.universe_crsp build --end 2024-12-31 --days 60 --top 50
+	$(PY) -m src.download_daily --tickers AAPL,MSFT --years_back 1
 
 test:
 	pytest -q
