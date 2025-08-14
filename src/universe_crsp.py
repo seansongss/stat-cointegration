@@ -73,7 +73,7 @@ def build_universe(end: str | None, days: int, top: int) -> Path:
     snap.to_csv(snap_path, index=False)
     uni.to_csv(uni_path, index=False)
 
-    print(f"[OK] Universe saved → {uni_path}  (meta → {snap_path})")
+    print(f"Universe saved to {uni_path}  (meta to {snap_path})")
     return uni_path
 
 def main():

@@ -65,7 +65,7 @@ def main():
 
         df = fetch_daily_window_for_permnos(db, permnos, years_back=args.years_back)
 
-    # save one parquet per ticker (merge by permno if multiple share classes)
+    # save one csv per ticker (merge by permno if multiple share classes)
     for t in tickers:
         p = mapdf.loc[mapdf["ticker"] == t, "permno"]
         if p.empty:
@@ -73,7 +73,7 @@ def main():
         sub = df[df["permno"] == p.iloc[0]].copy()
         out = Path(RAW_DIR) / f"{t}_dsf_{args.years_back}y.csv"
         save_csv(sub, out)
-        print(f"[OK] {t}: {len(sub):,} rows → {out}")
+        print(f"{t}: {len(sub):,} rows to {out}")
 
 if __name__ == "__main__":
     main()
