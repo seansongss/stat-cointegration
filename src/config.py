@@ -20,15 +20,32 @@ VALID_EXCHCD = (1, 2, 3)
 # Share codes: 10, 11 = common stocks
 VALID_SHRCD = (10, 11)
 
-# Backtesting configuration
+# Backtesting tickers
 BACKTEST_TICKERS = [
     "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA",
     "NVDA", "META", "NFLX", "CRM", "ADBE"
 ]
 
-# Specific pairs to test
+# Specific pairs to test (empty to read from pairs.csv)
 BACKTEST_PAIRS = [
-    ("AAPL", "MSFT"),
-    ("GOOGL", "AMZN"),
-    ("TSLA", "NVDA"),
+    # ("AAPL", "MSFT"),
+    # ("GOOGL", "AMZN"),
+    # ("TSLA", "NVDA"),
 ]
+
+# Default backtest window
+DEFAULT_START = "2024-01-01"
+DEFAULT_END   = "2024-12-31"
+
+# Pair selection constraints
+MIN_OVERLAP_DAYS = 120
+
+# Signal settings
+LOOKBACK = 60
+ENTRY_Z  = 2.0
+EXIT_Z   = 0.5
+TIME_STOP_DAYS = 10
+
+# Cost model
+COST_BPS = 2.0
+TOP_PAIRS_FOR_BACKTEST = 25
