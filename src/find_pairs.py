@@ -1,7 +1,29 @@
 import argparse
 import pandas as pd
+import numpy as np
 from statsmodels.tsa.stattools import coint
-from .config import RAW_DIR, RESULTS_DIR
+import statsmodels.api as sm
+
+from .config import RAW_DIR, RESULTS_DIR, MIN_OVERLAP_DAYS
+
+def load_price_series(ticker: str, start: str, end: str) -> pd.Series:
+    """Load CRSP CSV for ticker and return a date-indexed price series within [start, end]."""
+    f = RAW_DIR / f"{ticker}_dsf_1y.csv"
+    if not f.exists():
+        raise FileNotFoundError(f"Missing CSV for {ticker}: {f}")
+    df = pd.read_csv(f, parse_dates=["date"])
+    df = df.sort_values("date")
+    df = df[(df["date"] >= pd.to_datetime(start)) & (df["date"] <= pd.to_datetime(end))]
+    s = df.set_index("date")["prc"].astype(float)
+    return s.replace([np.inf, -np.inf], np.nan).dropna()
+
+def ols_beta_alpha(log_p1: pd.Series, log_p2: pd.Series) -> tuple[float, float]:
+    """OLS regression: log(P1) ~ log(P2)"""
+    X = sm.add_constant(log_p2.values)
+    model = sm.OLS(log_p1.values, X, missing="drop").fit()
+    alpha = float(model.params[0])
+    beta = float(model.params[1])
+    return beta, alpha
 
 def main():
     ap = argparse.ArgumentParser()
@@ -9,24 +31,57 @@ def main():
     ap.add_argument("--end", type=str, required=True)
     args = ap.parse_args()
 
-    tickers = [f.stem.split("_")[0] for f in RAW_DIR.glob("*.csv")]
+    tickers = [f.stem.split("_")[0] for f in RAW_DIR.glob("*_dsf_1y.csv")]
     prices = {}
     for t in tickers:
-        df = pd.read_csv(RAW_DIR / f"{t}_dsf_1y.csv", parse_dates=["date"])
-        mask = (df["date"] >= args.start) & (df["date"] <= args.end)
-        prices[t] = df.loc[mask].set_index("date")["prc"]
+        try:
+            prices[t] = load_price_series(t, args.start, args.end)
+        except FileNotFoundError:
+            print(f"skipping {t}: CSV missing")
+        except Exception as e:
+            print(f"skipping {t}: {e}")
 
-    tickers = list(prices.keys())
+    tickers = [t for t in tickers if t in prices]
     pairs = []
     for i in range(len(tickers)):
         for j in range(i+1, len(tickers)):
             t1, t2 = tickers[i], tickers[j]
             s1, s2 = prices[t1], prices[t2]
-            if len(s1) != len(s2): continue
-            score, pval, _ = coint(s1, s2)
-            pairs.append((t1, t2, pval))
+            df = pd.concat([s1, s2], axis=1, keys=[t1, t2]).dropna()
+            if len(df) < MIN_OVERLAP_DAYS:
+                continue
+            
+            lp1 = np.log(df[t1])
+            lp2 = np.log(df[t2])
+            
+            # Engle–Granger p-value
+            try:
+                _, pval, _ = coint(lp1, lp2)
+            except Exception as e:
+                print(f"coint failed for {t1}-{t2}: {e}")
+                continue
+            
+            # hedge ratio (beta) and intercept (alpha)
+            try:
+                beta, alpha = ols_beta_alpha(lp1, lp2)
+            except Exception as e:
+                print(f"OLS failed for {t1}-{t2}: {e}")
+                continue
+            
+            # simple diagnostics
+            corr = lp1.corr(lp2)
+            
+            pairs.append({
+                "ticker1": t1,
+                "ticker2": t2,
+                "pval": pval,
+                "beta": beta,
+                "alpha": alpha,
+                "corr_log": corr,
+                "n_obs": len(df)
+            })
 
-    out_df = pd.DataFrame(pairs, columns=["ticker1", "ticker2", "pval"]).sort_values("pval")
+    out_df = pd.DataFrame(pairs).sort_values(["pval", "corr_log"], ascending=[True, False])
     save_path = RESULTS_DIR / "pairs.csv"
     out_df.to_csv(save_path, index=False)
     print(f"Saved pairs to {save_path}")
