@@ -4,7 +4,7 @@ import numpy as np
 from statsmodels.tsa.stattools import coint
 import statsmodels.api as sm
 
-from .config import RAW_DIR, RESULTS_DIR, MIN_OVERLAP_DAYS
+from .config import RAW_DIR, RESULTS_DIR, META_DIR, MIN_OVERLAP_DAYS
 
 def load_price_series(ticker: str, start: str, end: str) -> pd.Series:
     """Load CRSP CSV for ticker and return a date-indexed price series within [start, end]."""
@@ -29,9 +29,23 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--start", type=str, required=True)
     ap.add_argument("--end", type=str, required=True)
+    ap.add_argument("--within_sector", type=int, default=0, help="1 to restrict pairs to same SIC2")
+    ap.add_argument("--labels_date", type=str, default="", help="e.g. 2024-12-31 (required if within_sector=1)")
     args = ap.parse_args()
 
     tickers = [f.stem.split("_")[0] for f in RAW_DIR.glob("*_dsf_1y.csv")]
+    
+    sic2_map = {}
+    if args.within_sector:
+        if not args.labels_date:
+            raise SystemExit("--labels_date is required when --within_sector=1 (run labels_crsp.py first)")
+        lab_path = META_DIR / f"sic_map_{args.labels_date}.csv"
+        if not lab_path.exists():
+            raise SystemExit(f"Missing labels file: {lab_path}. Run: python -m src.labels_crsp --on {args.labels_date}")
+        lab = pd.read_csv(lab_path)
+        sic2_map = {r.ticker: int(r.sic2) if pd.notna(r.sic2) else None for _, r in lab.iterrows()}
+
+
     prices = {}
     for t in tickers:
         try:
@@ -46,6 +60,11 @@ def main():
     for i in range(len(tickers)):
         for j in range(i+1, len(tickers)):
             t1, t2 = tickers[i], tickers[j]
+            if args.within_sector:
+                s1 = sic2_map.get(t1); s2 = sic2_map.get(t2)
+                if (s1 is None) or (s2 is None) or (s1 != s2):
+                    continue
+            
             s1, s2 = prices[t1], prices[t2]
             df = pd.concat([s1, s2], axis=1, keys=[t1, t2]).dropna()
             if len(df) < MIN_OVERLAP_DAYS:
@@ -58,7 +77,7 @@ def main():
             try:
                 _, pval, _ = coint(lp1, lp2)
             except Exception as e:
-                print(f"coint failed for {t1}-{t2}: {e}")
+                print(f"Cointegration failed for {t1}-{t2}: {e}")
                 continue
             
             # hedge ratio (beta) and intercept (alpha)
@@ -68,20 +87,16 @@ def main():
                 print(f"OLS failed for {t1}-{t2}: {e}")
                 continue
             
-            # simple diagnostics
-            corr = lp1.corr(lp2)
-            
             pairs.append({
                 "ticker1": t1,
                 "ticker2": t2,
                 "pval": pval,
                 "beta": beta,
                 "alpha": alpha,
-                "corr_log": corr,
                 "n_obs": len(df)
             })
 
-    out_df = pd.DataFrame(pairs).sort_values(["pval", "corr_log"], ascending=[True, False])
+    out_df = pd.DataFrame(pairs).sort_values(["pval"], ascending=[True])
     save_path = RESULTS_DIR / "pairs.csv"
     out_df.to_csv(save_path, index=False)
     print(f"Saved pairs to {save_path}")
