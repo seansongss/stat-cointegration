@@ -168,7 +168,7 @@ def main():
     save_path = RESULTS_DIR / "backtest_results.csv"
     out_df.to_csv(save_path, index=False)
     if not out_df.empty:
-        print(f"Saved backtest results → {save_path}")
+        print(f"Saved backtest results to {save_path}")
         print(f"Tested {len(out_df)} pairs, avg sharpe: {out_df['sharpe'].mean():.4f}")
 
 if __name__ == "__main__":
