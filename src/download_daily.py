@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 from .wrds_utils import get_db, save_csv
-from .config import RAW_DIR
+from .config import RAW_DIR, BACKTEST_TICKERS
 
 def map_tickers_to_permno(db, tickers: list[str], on_date: date) -> pd.DataFrame:
     """
@@ -50,11 +50,14 @@ def fetch_daily_window_for_permnos(db, permnos: list[int], years_back: int = 1) 
 
 def main():
     ap = argparse.ArgumentParser(description="Download CRSP daily bars for a few tickers")
-    ap.add_argument("--tickers", type=str, default="AAPL,MSFT")
+    ap.add_argument("--tickers", type=str)
     ap.add_argument("--years_back", type=int, default=1)
     args = ap.parse_args()
 
-    tickers = [t.strip().upper() for t in args.tickers.split(",") if t.strip()]
+    if not args.tickers:
+        tickers = BACKTEST_TICKERS
+    else:
+        tickers = [t.strip().upper() for t in args.tickers.split(",") if t.strip()]
     on_date = pd.to_datetime("2024-12-31").date()
 
     with get_db() as db:
