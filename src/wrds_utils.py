@@ -7,8 +7,7 @@ import pandas as pd
 import wrds
 
 from .config import (
-    WRDS_USERNAME, WRDS_POSTGRES_HOST, WRDS_POSTGRES_PORT,
-    META_DIR, VALID_EXCHCD, VALID_SHRCD
+    WRDS_USERNAME, WRDS_POSTGRES_HOST, WRDS_POSTGRES_PORT
 )
 
 # ---------- WRDS connection ----------
