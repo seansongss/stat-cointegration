@@ -2,7 +2,7 @@ import argparse
 from pathlib import Path
 import pandas as pd
 
-from .config import RAW_DIR, META_DIR
+from .config import RAW_DIR, META_DIR, DEFAULT_END
 from .wrds_utils import get_db
 
 def fetch_labels(db, tickers: list[str], on_date: str) -> pd.DataFrame:
@@ -31,7 +31,7 @@ def fetch_labels(db, tickers: list[str], on_date: str) -> pd.DataFrame:
 
 def main():
     ap = argparse.ArgumentParser(description="Fetch SIC/EXCHCD/SHRCD labels for CSV tickers at a snapshot date")
-    ap.add_argument("--on", type=str, required=True, help="Snapshot date like 2024-12-31")
+    ap.add_argument("--on", type=str, required=True, help="Snapshot date like 2024-12-31", default=DEFAULT_END)
     args = ap.parse_args()
 
     tickers = [f.stem.split("_")[0] for f in RAW_DIR.glob("*_dsf_1y.csv")]
