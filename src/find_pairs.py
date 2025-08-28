@@ -4,7 +4,7 @@ import numpy as np
 from statsmodels.tsa.stattools import coint
 import statsmodels.api as sm
 
-from .config import RAW_DIR, RESULTS_DIR, META_DIR, MIN_OVERLAP_DAYS
+from .config import DEFAULT_START, DEFAULT_END, RAW_DIR, RESULTS_DIR, META_DIR, MIN_OVERLAP_DAYS
 
 def load_price_series(ticker: str, start: str, end: str) -> pd.Series:
     """Load CRSP CSV for ticker and return a date-indexed price series within [start, end]."""
@@ -27,10 +27,10 @@ def ols_beta_alpha(log_p1: pd.Series, log_p2: pd.Series) -> tuple[float, float]:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--start", type=str, required=True)
-    ap.add_argument("--end", type=str, required=True)
+    ap.add_argument("--start", type=str, required=True, default=DEFAULT_START)
+    ap.add_argument("--end", type=str, required=True, default=DEFAULT_END)
     ap.add_argument("--within_sector", type=int, default=0, help="1 to restrict pairs to same SIC2")
-    ap.add_argument("--labels_date", type=str, default="", help="e.g. 2024-12-31 (required if within_sector=1)")
+    ap.add_argument("--labels_date", type=str, default=DEFAULT_END, help="e.g. 2024-12-31 (required if within_sector=1)")
     args = ap.parse_args()
 
     tickers = [f.stem.split("_")[0] for f in RAW_DIR.glob("*_dsf_1y.csv")]
