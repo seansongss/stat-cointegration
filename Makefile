@@ -1,33 +1,58 @@
-PY=python
-
 install:
 	pip install -r requirements.txt
 
 # Download data for config tickers
 download:
-	$(PY) -m src.download_daily --tickers $(shell python -c "from src.config import BACKTEST_TICKERS; print(','.join(BACKTEST_TICKERS))") --years_back 1
+	python -m src.download_daily
 
-# Download daily data for specific tickers
+# Download daily data for specific tickers (comma separated)
 download-specific:
-	$(PY) -m src.download_daily --tickers $(word 2, $(MAKECMDGOALS)) --years_back 1
+	python -m src.download_daily --tickers $(word 2, $(MAKECMDGOALS))
 
-# Find pairs with default config
+# Find pairs with config
 find:
-	$(PY) -m src.find_pairs --start 2024-01-01 --end 2024-12-31
+	python -m src.find_pairs
 
-# Run backtest with default config
+# Find pairs WITHIN sector (requires labels)
+find-sector:
+	python -m src.find_pairs --within_sector 1
+
+# Run backtest with config
 test:
-	$(PY) -m src.backtest_pairs
+	python -m src.backtest_pairs
 
 # Run backtest with specific tickers
 test-tickers:
-	$(PY) -m src.backtest_pairs --tickers $(word 2, $(MAKECMDGOALS))
+	python -m src.backtest_pairs --tickers $(word 2, $(MAKECMDGOALS))
 
 # Run backtest with specific pairs
 test-pairs:
-	$(PY) -m src.backtest_pairs --pairs $(word 2, $(MAKECMDGOALS))
+	python -m src.backtest_pairs --pairs $(word 2, $(MAKECMDGOALS))
 
+# Fetch sector labels at snapshot date
+sic:
+	python -m src.labels_crsp
+
+# Walk-forward backtest (formation -> trade cycles)
+walk:
+	python -m src.daily_walkforward
+
+# Plot equity and rolling Sharpe from walk-forward
+plot:
+	python -m src.plot_results
+
+# Run pipeline
 pipeline:
-	$(PY) -m src.download_daily --tickers $(shell python -c "from src.config import BACKTEST_TICKERS; print(','.join(BACKTEST_TICKERS))") --years_back 1
-	$(PY) -m src.find_pairs --start 2024-01-01 --end 2024-12-31
-	$(PY) -m src.backtest_pairs
+	python -m src.download_daily
+	python -m src.find_pairs
+	python -m src.backtest_pairs
+	python -m src.daily_walkforward
+	python -m src.plot_results
+
+# Run pipeline within sector
+pipeline-sector:
+	python -m src.download_daily
+	python -m src.find_pairs --within_sector 1
+	python -m src.backtest_pairs
+	python -m src.daily_walkforward --within_sector 1
+	python -m src.plot_results
