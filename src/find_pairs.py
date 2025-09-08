@@ -27,8 +27,8 @@ def ols_beta_alpha(log_p1: pd.Series, log_p2: pd.Series) -> tuple[float, float]:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--start", type=str, required=True, default=DEFAULT_START)
-    ap.add_argument("--end", type=str, required=True, default=DEFAULT_END)
+    ap.add_argument("--start", type=str, default=DEFAULT_START)
+    ap.add_argument("--end", type=str, default=DEFAULT_END)
     ap.add_argument("--within_sector", type=int, default=0, help="1 to restrict pairs to same SIC2")
     ap.add_argument("--labels_date", type=str, default=DEFAULT_END, help="e.g. 2024-12-31 (required if within_sector=1)")
     args = ap.parse_args()
