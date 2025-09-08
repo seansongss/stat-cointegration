@@ -6,8 +6,7 @@ from .config import (
     RAW_DIR, RESULTS_DIR,
     DEFAULT_START, DEFAULT_END,
     LOOKBACK, ENTRY_Z, EXIT_Z, TIME_STOP_DAYS,
-    COST_BPS, TOP_PAIRS_FOR_BACKTEST,
-    PVAL_MAX, MIN_LOG_CORR
+    COST_BPS, PVAL_MAX, MIN_LOG_CORR
 )
 
 # 1 bps = 0.01%
@@ -111,7 +110,6 @@ def main():
     parser.add_argument("--exit",  type=float, default=EXIT_Z)
     parser.add_argument("--time_stop", type=int, default=TIME_STOP_DAYS)
     parser.add_argument("--cost_bps", type=float, default=COST_BPS)
-    parser.add_argument("--max_pairs", type=int, default=TOP_PAIRS_FOR_BACKTEST)
     args = parser.parse_args()
     
     try:
@@ -123,7 +121,7 @@ def main():
         pairs_df = pairs_df[pairs_df["pval"] <= PVAL_MAX]
     if "corr_log" in pairs_df.columns:
         pairs_df = pairs_df[pairs_df["corr_log"] >= MIN_LOG_CORR]
-    pairs_df = pairs_df.sort_values(["pval"], ascending=True).head(args.max_pairs)
+    pairs_df = pairs_df.sort_values(["pval"], ascending=True)
 
     rows = []
     for _, r in pairs_df.iterrows():

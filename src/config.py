@@ -50,7 +50,6 @@ TIME_STOP_DAYS = 10
 
 # Cost model
 COST_BPS = 2.0
-TOP_PAIRS_FOR_BACKTEST = 25
 
 # Cointegration selection
 PVAL_MAX = 0.05
