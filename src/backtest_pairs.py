@@ -1,14 +1,13 @@
 import pandas as pd
 import numpy as np
 import argparse
-import statsmodels.api as sm
 
 from .config import (
     RAW_DIR, RESULTS_DIR,
     DEFAULT_START, DEFAULT_END,
     LOOKBACK, ENTRY_Z, EXIT_Z, TIME_STOP_DAYS,
     COST_BPS, TOP_PAIRS_FOR_BACKTEST,
-    BACKTEST_PAIRS
+    PVAL_MAX, MIN_LOG_CORR
 )
 
 # 1 bps = 0.01%
@@ -113,56 +112,27 @@ def main():
     parser.add_argument("--time_stop", type=int, default=TIME_STOP_DAYS)
     parser.add_argument("--cost_bps", type=float, default=COST_BPS)
     parser.add_argument("--max_pairs", type=int, default=TOP_PAIRS_FOR_BACKTEST)
-    parser.add_argument("--tickers", type=str, default="")
-    parser.add_argument("--pairs", type=str, default="")
     args = parser.parse_args()
     
-    pairs_df = None
-    pairs = []
-    
-    if args.pairs:
-        pairs = [tuple(x.split(",")) for x in args.pairs.split(";") if x]
-    elif args.tickers:
-        T = [t.strip().upper() for t in args.tickers.split(",") if t.strip()]
-        for i in range(len(T)):
-            for j in range(i+1, len(T)):
-                pairs.append((T[i], T[j]))
-    elif BACKTEST_PAIRS:
-        pairs = BACKTEST_PAIRS
-    else:
-        # default: use top pairs from results/pairs.csv (lowest pval)
+    try:
         pairs_df = pd.read_csv(RESULTS_DIR / "pairs.csv")
-        pairs_df = pairs_df.sort_values("pval").head(args.max_pairs)
+    except Exception as e:
+        raise SystemExit(f"Failed to read 'pairs.csv': {e}")
+
+    if "pval" in pairs_df.columns:
+        pairs_df = pairs_df[pairs_df["pval"] <= PVAL_MAX]
+    if "corr_log" in pairs_df.columns:
+        pairs_df = pairs_df[pairs_df["corr_log"] >= MIN_LOG_CORR]
+    pairs_df = pairs_df.sort_values(["pval"], ascending=True).head(args.max_pairs)
 
     rows = []
-    if pairs_df is not None:
-        for _, r in pairs_df.iterrows():
-            try:
-                res = backtest_pair_row(r, args.start, args.end, args.lookback, args.entry, args.exit, args.time_stop, args.cost_bps)
-                rows.append(res)
-                print(f"{r.ticker1}-{r.ticker2}: Sharpe {res['sharpe']:.2f}, trades {res['trades']}")
-            except Exception as e:
-                print(f"[WARN] backtest failed for {r.ticker1}-{r.ticker2}: {e}")
-    else:
-        # Estimate beta/alpha
-        # quick OLS on the whole period for these specific pairs
-        for (t1, t2) in pairs[:args.max_pairs]:
-            try:
-                # estimate beta/alpha
-                lp1 = load_log_price(t1, args.start, args.end)
-                lp2 = load_log_price(t2, args.start, args.end)
-                df = pd.concat([lp1, lp2], axis=1, keys=["lp1","lp2"]).dropna()
-                if len(df) < LOOKBACK + 5:
-                    raise ValueError("not enough data")
-                X = sm.add_constant(df["lp2"].values)
-                model = sm.OLS(df["lp1"].values, X).fit()
-                alpha = float(model.params[0]); beta = float(model.params[1])
-                r = pd.Series({"ticker1": t1, "ticker2": t2, "alpha": alpha, "beta": beta})
-                res = backtest_pair_row(r, args.start, args.end, args.lookback, args.entry, args.exit, args.time_stop, args.cost_bps)
-                rows.append(res)
-                print(f"{t1}-{t2}: Sharpe {res['sharpe']:.2f}, trades {res['trades']}")
-            except Exception as e:
-                print(f"[WARN] backtest failed for {t1}-{t2}: {e}")
+    for _, r in pairs_df.iterrows():
+        try:
+            res = backtest_pair_row(r, args.start, args.end, args.lookback, args.entry, args.exit, args.time_stop, args.cost_bps)
+            rows.append(res)
+            print(f"{r.ticker1}-{r.ticker2}: Sharpe {res['sharpe']:.2f}, trades {res['trades']}")
+        except Exception as e:
+            print(f"backtest failed for {r.ticker1}-{r.ticker2}: {e}")
 
     out_df = pd.DataFrame(rows)
     save_path = RESULTS_DIR / "backtest_results.csv"
